@@ -1,0 +1,3 @@
+<?php
+
+const TRANSACTION_WAGE = 5000;
