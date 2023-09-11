@@ -6,10 +6,19 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TransactionRequest;
+use App\Http\Resources\LastTransactionsResource;
 use App\Interfaces\Repositories\AccountRepositoryInterface;
 use App\Interfaces\Repositories\CardRepositoryInterface;
 use App\Interfaces\Repositories\TransactionRepositoryInterface;
 use App\Interfaces\Repositories\WageRepositoryInterface;
+use App\Jobs\SmsJob;
+use App\Models\Transaction;
+use App\Models\User;
+use App\Notifications\SmsToClient;
+use GrahamCampbell\ResultType\Success;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Notification;
 
 class TransactionController extends Controller
 {
@@ -29,14 +38,6 @@ class TransactionController extends Controller
     }
 
     /**
-     * Display a listing of the resource.
-     */
-    public function index()
-    {
-        //
-    }
-
-    /**
      * Store a newly created resource in storage.
      */
     public function store(TransactionRequest $request)
@@ -49,12 +50,7 @@ class TransactionController extends Controller
         $transaction = $this->transactionRepository->create($request->only(['card_number', 'destination_card_number', 'amount']));
 
         // check if the first card account have enough amount of credit for transaction and wage
-        if(($card->account->balance + TRANSACTION_WAGE) < $request->amount){
-
-            $transaction = $this->transactionRepository->changeStatus($transaction, 'no_balance');
-
-            return 'balance is not enough!';
-        }
+        $this->checkBalance($transaction, $card->account->balance, $request->amount);
 
         // get the destination transaction card info
         $destinationCard = $this->cardRepository->findByCardNumber($request->destination_card_number);
@@ -69,37 +65,52 @@ class TransactionController extends Controller
                 // sub and sum operation on the first card and destionation card accounts on db 
                 $this->accountRepository->subBalance($card->account, $request->amount);
                 $this->accountRepository->subBalance($destinationCard->account, $request->amount);
+
+                // send sms after transaction commited to users on the queueu
+                dispatch(new SmsJob($card, $request->amount, GIVE_MONNY_SMS_MESSAGE))->delay(now()->addSeconds(30))->afterCommit();
+                dispatch(new SmsJob($destinationCard, $request->amount, GET_MONNY_SMS_MESSAGE))->delay(now()->addSeconds(30))->afterCommit();
             });
+
         } catch (\Throwable $th) {
 
             // change transaction status to error on database
             $transaction = $this->transactionRepository->changeStatus($transaction, 'error_happend');
+            return 'error ' . $th->getMessage();
+
+            return response([
+                'success' => false,
+                'message' => 'Error: something went wrong! ' . $th->getMessage()
+            ], Response::HTTP_CONFLICT);
         }
 
-        return 'done';
+        return response([
+            'success' => true,
+            'message' => 'payment is successfull.'
+        ], Response::HTTP_CREATED);
     }
 
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function showLastTransactions()
     {
+
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+    //----------------------------------------------------
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    private function checkBalance(Transaction $transaction, $balance, $amount)
     {
-        //
+
+        if(($balance + TRANSACTION_WAGE) < $amount){
+
+            $transaction = $this->transactionRepository->changeStatus($transaction, 'no_balance');
+
+            return response([
+                'success' => false,
+                'message' => 'Account Balance is not enough!'
+            ], Response::HTTP_NOT_ACCEPTABLE);
+        }
     }
 }

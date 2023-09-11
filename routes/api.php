@@ -15,4 +15,4 @@ use App\Http\Controllers\API\TransactionController;
 |
 */
 
-Route::post('/transaction', [TransactionController::class, 'store'])->name('doTransaction');
+Route::middleware('ChangeFaNumbersToEn')->post('/transaction', [TransactionController::class, 'store'])->name('doTransaction');

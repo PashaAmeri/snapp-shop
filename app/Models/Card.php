@@ -14,8 +14,15 @@ class Card extends Model
         'card_number'
     ];
 
-    public function account() {
+    public function account() 
+    {
         
         return $this->belongsTo(Account::class);
+    }
+
+    public function user() 
+    {
+
+        return $this->hasOneThrough(User::class, Account::class, 'user_id', 'id');
     }
 }
