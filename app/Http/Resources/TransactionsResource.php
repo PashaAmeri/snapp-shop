@@ -3,10 +3,9 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
-use App\Http\Resources\UsersResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class LastTransactionsResource extends JsonResource
+class TransactionsResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -17,8 +16,10 @@ class LastTransactionsResource extends JsonResource
     {
 
         return [
-            'time_limit' => '10 minutes',
-            'users' => UsersResource::collection($this),
+            'card_number' => $this->card->card_number,
+            'destination_card_number' => $this->destinationCard->card_number,
+            'amount' => $this->amount,
+            'created_at' => $this->created_at
         ];
     }
 }

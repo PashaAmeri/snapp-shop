@@ -14,4 +14,16 @@ class Transaction extends Model
         'destination_card_id',
         'amount',
     ];
+
+    public function card()
+    {
+        
+        return $this->belongsTo(Card::class);
+    }
+    
+    public function destinationCard()
+    {
+        
+        return $this->belongsTo(Card::class, 'destination_card_id', 'id');
+    }
 }

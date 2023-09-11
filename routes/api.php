@@ -16,3 +16,4 @@ use App\Http\Controllers\API\TransactionController;
 */
 
 Route::middleware('ChangeFaNumbersToEn')->post('/transaction', [TransactionController::class, 'store'])->name('doTransaction');
+Route::get('/lastTransactions', [TransactionController::class, 'showLastTransactions'])->name('lastTransactions');

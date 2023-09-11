@@ -15,6 +15,7 @@ use App\Jobs\SmsJob;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Notifications\SmsToClient;
+use Carbon\Carbon;
 use GrahamCampbell\ResultType\Success;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Http;
@@ -46,14 +47,20 @@ class TransactionController extends Controller
         // get first card info from db
         $card = $this->cardRepository->findByCardNumber($request->card_number);
 
-        // create new transaction
-        $transaction = $this->transactionRepository->create($request->only(['card_number', 'destination_card_number', 'amount']));
-
-        // check if the first card account have enough amount of credit for transaction and wage
-        $this->checkBalance($transaction, $card->account->balance, $request->amount);
-
         // get the destination transaction card info
         $destinationCard = $this->cardRepository->findByCardNumber($request->destination_card_number);
+
+        // create new transaction
+        $transaction = $this->transactionRepository->create($card->id, $destinationCard->id, $request->amount);
+
+        // check if the first card account have enough amount of credit for transaction and wage
+        if(!$this->checkBalance($transaction, $card->account->balance, $request->amount)){
+
+            return response([
+                'success' => false,
+                'message' => 'Account Balance is not enough!'
+            ], Response::HTTP_NOT_ACCEPTABLE);
+        }
 
         try {
 
@@ -64,7 +71,7 @@ class TransactionController extends Controller
     
                 // sub and sum operation on the first card and destionation card accounts on db 
                 $this->accountRepository->subBalance($card->account, $request->amount);
-                $this->accountRepository->subBalance($destinationCard->account, $request->amount);
+                $this->accountRepository->sumBalance($destinationCard->account, $request->amount);
 
                 // send sms after transaction commited to users on the queueu
                 dispatch(new SmsJob($card, $request->amount, GIVE_MONNY_SMS_MESSAGE))->delay(now()->addSeconds(30))->afterCommit();
@@ -95,22 +102,31 @@ class TransactionController extends Controller
     public function showLastTransactions()
     {
 
-        //
+        $users = User::with(['transactions' => function ($q) {
+
+                $q->with('card', 'destinationCard');
+                $q->where('transactions.created_at', '>', Carbon::now()->subMinutes(10))
+                    ->orderBy('created_at', 'DESC');
+            }])->withCount('transactions')
+            ->orderByDesc('transactions_count')
+            ->limit(3)
+            ->get();
+        
+        return LastTransactionsResource::make($users);
     }
 
     //----------------------------------------------------
 
-    private function checkBalance(Transaction $transaction, $balance, $amount)
+    private function checkBalance(Transaction $transaction, $balance, $amount) : bool
     {
 
-        if(($balance + TRANSACTION_WAGE) < $amount){
+        if($balance < ($amount + TRANSACTION_WAGE)){
 
             $transaction = $this->transactionRepository->changeStatus($transaction, 'no_balance');
 
-            return response([
-                'success' => false,
-                'message' => 'Account Balance is not enough!'
-            ], Response::HTTP_NOT_ACCEPTABLE);
+            return false;
         }
+
+        return true;
     }
 }
