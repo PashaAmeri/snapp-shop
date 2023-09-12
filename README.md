@@ -33,30 +33,21 @@ Follow these steps to set up and run the project on your local machine.
 
 1. Clone the repository:
 
-   ```bash
-   git clone https://github.com/yourusername/snapp-shop-interview-task.git
+        git clone https://github.com/yourusername/snapp-shop-interview-task.git
 
-    Change into the project directory:
+Change into the project directory:
 
-    bash
-
-cd snapp-shop-interview-task
+    cd snapp-shop-interview-task
 
 Install project dependencies:
 
-bash
-
-composer install
+    composer install
 
 Generate an application key:
 
-bash
-
-php artisan key:generate
+    php artisan key:generate
 
 Run the database migrations and seed the database with initial data:
-
-bash
 
     php artisan migrate --seed
 
@@ -69,13 +60,9 @@ To run the project and associated services, use the following commands:
 
     Start the Laravel development server:
 
-    bash
-
-php artisan serve
+    php artisan serve
 
 Start the Laravel queue worker for handling background jobs:
-
-bash
 
     php artisan queue:work
 
