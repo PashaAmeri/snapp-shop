@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Repositories\CardRepository;
+use App\Repositories\UserRepository;
 use App\Repositories\WageRepository;
 use App\Repositories\AccountRepository;
 use Illuminate\Support\ServiceProvider;
