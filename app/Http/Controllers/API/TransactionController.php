@@ -10,6 +10,7 @@ use App\Http\Resources\LastTransactionsResource;
 use App\Interfaces\Repositories\AccountRepositoryInterface;
 use App\Interfaces\Repositories\CardRepositoryInterface;
 use App\Interfaces\Repositories\TransactionRepositoryInterface;
+use App\Interfaces\Repositories\UserRepositoryInterface;
 use App\Interfaces\Repositories\WageRepositoryInterface;
 use App\Jobs\SmsJob;
 use App\Models\Transaction;
@@ -28,14 +29,16 @@ class TransactionController extends Controller
     private CardRepositoryInterface $cardRepository;
     private AccountRepositoryInterface $accountRepository;
     private wageRepositoryInterface $wageRepository;
+    private UserRepositoryInterface $userRepository;
 
-    public function __construct(TransactionRepositoryInterface $transactionRepository, CardRepositoryInterface $cardRepository, AccountRepositoryInterface $accountRepository, WageRepositoryInterface $wageRepository)
+    public function __construct(TransactionRepositoryInterface $transactionRepository, CardRepositoryInterface $cardRepository, AccountRepositoryInterface $accountRepository, WageRepositoryInterface $wageRepository, UserRepositoryInterface $userRepository)
     {
         
         $this->transactionRepository = $transactionRepository;
         $this->cardRepository = $cardRepository;
         $this->accountRepository = $accountRepository;
         $this->wageRepository = $wageRepository;
+        $this->userRepository = $userRepository;
     }
 
     /**
@@ -101,18 +104,17 @@ class TransactionController extends Controller
      */
     public function showLastTransactions()
     {
-
-        $users = User::with(['transactions' => function ($q) {
-
-                $q->with('card', 'destinationCard');
-                $q->where('transactions.created_at', '>', Carbon::now()->subMinutes(10))
-                    ->orderBy('created_at', 'DESC');
-            }])->withCount('transactions')
-            ->orderByDesc('transactions_count')
-            ->limit(3)
-            ->get();
         
-        return LastTransactionsResource::make($users);
+        try {
+            
+            return LastTransactionsResource::make($this->userRepository->getLastUsersWithTransactions());
+        } catch (\Throwable $th) {
+            
+            return response([
+                'success' => false,
+                'message' => 'Error: something went wrong! ' . $th->getMessage()
+            ], Response::HTTP_CONFLICT);
+        }
     }
 
     //----------------------------------------------------
