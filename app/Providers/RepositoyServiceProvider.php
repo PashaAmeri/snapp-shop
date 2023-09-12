@@ -8,6 +8,7 @@ use App\Repositories\AccountRepository;
 use Illuminate\Support\ServiceProvider;
 use App\Repositories\TransactionRepository;
 use App\Interfaces\Repositories\CardRepositoryInterface;
+use App\Interfaces\Repositories\UserRepositoryInterface;
 use App\Interfaces\Repositories\WageRepositoryInterface;
 use App\Interfaces\Repositories\AccountRepositoryInterface;
 use App\Interfaces\Repositories\TransactionRepositoryInterface;
