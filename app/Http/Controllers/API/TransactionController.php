@@ -84,7 +84,7 @@ class TransactionController extends Controller
         } catch (\Throwable $th) {
 
             // change transaction status to error on database
-            $transaction = $this->transactionRepository->changeStatus($transaction, 'error_happend');
+            $transaction = $this->transactionRepository->changeStatus($transaction, TRANSACTION_STATUS_ERROR);
             return 'error ' . $th->getMessage();
 
             return response([
@@ -124,7 +124,7 @@ class TransactionController extends Controller
 
         if($balance < ($amount + TRANSACTION_WAGE)){
 
-            $transaction = $this->transactionRepository->changeStatus($transaction, 'no_balance');
+            $transaction = $this->transactionRepository->changeStatus($transaction, TRANSACTION_STATUS_NO_BALANCE);
 
             return false;
         }

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignIdFor(Card::class);
             $table->foreignIdFor(Card::class, 'destination_card_id');
             $table->integer('amount');
-            $table->enum('status', ['succeed', 'no_balance', 'error_happend']);
+            $table->enum('status', [TRANSACTION_STATUS_SUCCEED, TRANSACTION_STATUS_NO_BALANCE, TRANSACTION_STATUS_ERROR]);
             $table->timestamps();
         });
     }

@@ -5,6 +5,11 @@ const TRANSACTION_WAGE = 5000;
 const GET_MONNY_SMS_MESSAGE = "واریز به حساب: {{Account}} \n مبلغ: {{Amount}}";
 const GIVE_MONNY_SMS_MESSAGE = "برداشت از حساب: {{Account}} \n مبلغ: {{Amount}}";
 
+const TRANSACTION_STATUS_SUCCEED = 'succeed';
+const TRANSACTION_STATUS_NO_BALANCE = 'no_balance';
+const TRANSACTION_STATUS_ERROR = 'error';
+
+
 // function to change arabic and persian numbers to english
 function fatoEnNumeric($string) {
 

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->id();
             $table->foreignIdFor(User::class);
             $table->string('account_number', 10);
-            $table->integer('balance');
+            $table->bigInteger('balance');
             $table->timestamps();
         });
     }
