@@ -5,10 +5,11 @@ namespace App\Repositories;
 use Carbon\Carbon;
 use App\Models\User;
 use App\Interfaces\Repositories\UserRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 class UserRepository implements UserRepositoryInterface {
 
-    public function getLastUsersWithTransactions() : User {
+    public function getLastUsersWithTransactions() : Collection {
 
         return User::with(['transactions' => function ($q) {
 
