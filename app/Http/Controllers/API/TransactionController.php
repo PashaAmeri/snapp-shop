@@ -122,6 +122,7 @@ class TransactionController extends Controller
     private function checkBalance(Transaction $transaction, $balance, $amount) : bool
     {
 
+        // chack sum of the account balance and and the wage
         if($balance < ($amount + TRANSACTION_WAGE)){
 
             $transaction = $this->transactionRepository->changeStatus($transaction, TRANSACTION_STATUS_NO_BALANCE);

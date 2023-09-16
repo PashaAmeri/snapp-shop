@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Card;
+use App\Rules\ValidIranCardNumberRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Exists;
 
@@ -30,12 +31,14 @@ class TransactionRequest extends FormRequest
                 'required',
                 'numeric',
                 'digits:16',
+                new ValidIranCardNumberRule(), 
                 new Exists(Card::class, 'card_number'),
             ],
             'destination_card_number' => [
                 'required',
                 'numeric',
                 'digits:16',
+                new ValidIranCardNumberRule(), 
                 new Exists(Card::class, 'card_number'),
             ],
             'amount' => [

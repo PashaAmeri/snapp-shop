@@ -16,7 +16,7 @@ class CardSeeder extends Seeder
         
         Card::create([
             'account_id' => '1',
-            'card_number' => '1234123412341234'
+            'card_number' => '6219861922701437'
         ]);
 
         Card::create([
@@ -26,7 +26,7 @@ class CardSeeder extends Seeder
 
         Card::create([
             'account_id' => '3',
-            'card_number' => '7894789478947894'
+            'card_number' => '6362141124764441'
         ]);
     }
 }
