@@ -2,62 +2,26 @@
 
 namespace App\Http\Controllers\API;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TransactionRequest;
 use App\Http\Resources\LastTransactionsResource;
-use App\Interfaces\Repositories\AccountRepositoryInterface;
-use App\Interfaces\Repositories\CardRepositoryInterface;
-use App\Interfaces\Repositories\TransactionRepositoryInterface;
 use App\Interfaces\Repositories\UserRepositoryInterface;
-use App\Interfaces\Repositories\WageRepositoryInterface;
-use App\Jobs\SmsJob;
-use App\Models\Transaction;
-use App\Models\User;
-use App\Notifications\SmsToClient;
-use Carbon\Carbon;
-use GrahamCampbell\ResultType\Success;
+use App\Interfaces\Services\DoTransactionServiceInterface;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Notification;
 
 class TransactionController extends Controller
 {
 
-    private TransactionRepositoryInterface $transactionRepository;
-    private CardRepositoryInterface $cardRepository;
-    private AccountRepositoryInterface $accountRepository;
-    private wageRepositoryInterface $wageRepository;
-    private UserRepositoryInterface $userRepository;
-
-    public function __construct(TransactionRepositoryInterface $transactionRepository, CardRepositoryInterface $cardRepository, AccountRepositoryInterface $accountRepository, WageRepositoryInterface $wageRepository, UserRepositoryInterface $userRepository)
-    {
-        
-        $this->transactionRepository = $transactionRepository;
-        $this->cardRepository = $cardRepository;
-        $this->accountRepository = $accountRepository;
-        $this->wageRepository = $wageRepository;
-        $this->userRepository = $userRepository;
-    }
-
     /**
      * Store a newly created resource in storage.
      */
-    public function store(TransactionRequest $request)
+    public function store(TransactionRequest $request, DoTransactionServiceInterface $transaction)
     {
 
-        // get first card info from db
-        $card = $this->cardRepository->findByCardNumber($request->card_number);
-
-        // get the destination transaction card info
-        $destinationCard = $this->cardRepository->findByCardNumber($request->destination_card_number);
-
-        // create new transaction
-        $transaction = $this->transactionRepository->create($card->id, $destinationCard->id, $request->amount);
+        $transaction->ready($request);
 
         // check if the first card account have enough amount of credit for transaction and wage
-        if(!$this->checkBalance($transaction, $card->account->balance, $request->amount)){
+        if(!$transaction->checkBalance($request->amount)){
 
             return response([
                 'success' => false,
@@ -67,25 +31,13 @@ class TransactionController extends Controller
 
         try {
 
-            DB::transaction(function () use ($request, $destinationCard, $card, $transaction) {
-
-                // create wage in db for this transaction
-                $this->wageRepository->create($transaction->id);
-    
-                // sub and sum operation on the first card and destionation card accounts on db 
-                $this->accountRepository->subBalance($card->account, $request->amount);
-                $this->accountRepository->sumBalance($destinationCard->account, $request->amount);
-
-                // send sms after transaction commited to users on the queueu
-                dispatch(new SmsJob($card, $request->amount, GIVE_MONNY_SMS_MESSAGE))->delay(now()->addSeconds(30))->afterCommit();
-                dispatch(new SmsJob($destinationCard, $request->amount, GET_MONNY_SMS_MESSAGE))->delay(now()->addSeconds(30))->afterCommit();
-            });
+            // change status on database, make a wage record, transfer credits and send sms to users 
+            $transaction->execute($request);
 
         } catch (\Throwable $th) {
 
             // change transaction status to error on database
-            $transaction = $this->transactionRepository->changeStatus($transaction, TRANSACTION_STATUS_ERROR);
-            return 'error ' . $th->getMessage();
+            $transaction->conflict();
 
             return response([
                 'success' => false,
@@ -102,12 +54,12 @@ class TransactionController extends Controller
     /**
      * Display the specified resource.
      */
-    public function showLastTransactions()
+    public function showLastTransactions(UserRepositoryInterface $userRepository)
     {
         
         try {
             
-            return LastTransactionsResource::make($this->userRepository->getLastUsersWithTransactions());
+            return LastTransactionsResource::make($userRepository->getLastUsersWithTransactions());
         } catch (\Throwable $th) {
             
             return response([
@@ -115,21 +67,5 @@ class TransactionController extends Controller
                 'message' => 'Error: something went wrong! ' . $th->getMessage()
             ], Response::HTTP_CONFLICT);
         }
-    }
-
-    //----------------------------------------------------
-
-    private function checkBalance(Transaction $transaction, $balance, $amount) : bool
-    {
-
-        // chack sum of the account balance and and the wage
-        if($balance < ($amount + TRANSACTION_WAGE)){
-
-            $transaction = $this->transactionRepository->changeStatus($transaction, TRANSACTION_STATUS_NO_BALANCE);
-
-            return false;
-        }
-
-        return true;
     }
 }
